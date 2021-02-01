@@ -1,8 +1,8 @@
-#ifndef ATTRIBUTE_H
-#define ATTRIBUTE_H
+#ifndef Record_HPP
+#define Record_HPP
 
 #include <sys/types.h>
-#include "mft.h"
+#include "mft.hpp"
 
 typedef enum {
   STANDARD_INFORMATION  = 0x0010u,
@@ -23,9 +23,14 @@ typedef enum {
   EA                    = 0x00E0u,
   PROPERTY_SET          = 0x00F0u,
   LOGGED_UTILITY_STREAM = 0x0100u
-} Attribute_Def;
+} Record_Def;
 
-// Generic attribute
+typedef enum {
+  RESIDENT    = 0x00u,
+  NONRESIDENT = 0x01u,
+} Attribute_Residency;
+
+// Generic record
 typedef struct __attribute__((packed)) {
   uint32_t type;
   uint32_t total_length;
@@ -34,35 +39,45 @@ typedef struct __attribute__((packed)) {
   uint16_t name_offset;
   uint16_t flags;
   uint16_t instance;
-} Attribute_Header;
+} Record_Header;
 
 typedef struct __attribute__((packed)) {
-  Attribute_Header header;
-  uint8_t data[];
-} Attribute;
+  Record_Header header;
+  uint8_t body[1];
+} Record_Generic;
 
 typedef struct __attribute__((packed)) {
-  Attribute_Header header;
-  uint32_t attribute_length;
-  uint32_t attribute_offset;
+  Record_Header header;
+  uint32_t value_length;
+  uint32_t value_offset;
   uint8_t reserved[2];
-  uint8_t data[];
-} Attribute_Resident;
+  uint8_t body[1];
+} Record_Resident;
 
 typedef struct __attribute__((packed)) {
-  Attribute_Header header;
+  Record_Header header;
   uint64_t vcn_low;
   uint64_t vcn_high;
-  uint16_t mapping_pair_offset;
+  uint16_t data_offset;
   uint8_t reserved[6];
   uint64_t allocated_length;
-  uint64_t file_size;
-  uint64_t valid_data_length;
-  uint64_t total_allocated;
-  uint8_t data[];
-} Attribute_Nonresident;
+  uint64_t real_length;
+  uint64_t initial_length;
+  uint8_t body[1];
+} Record_Nonresident;
 
-Attribute* attribute_next(MFT*);
-void attribute_print(Attribute*);
+class Record {
+protected:
+  int fd;
+  Record_Generic* data;
+public:
+  Record(MasterFileTable&);
+  Record(Record&);
+  ~Record();
+  int getFD();
+  off_t getBodyOffset();
+  bool valid();
+  void print();
+};
 
 #endif
